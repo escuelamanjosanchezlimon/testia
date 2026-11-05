@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis quices</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#eef1f6;--card:#fff;--ink:#1b2433;--mute:#5d6b82;--line:#d5dbe6;--acc:#4c5bd4;--acc-ink:#fff;--ok:#16794c;--okbg:#dff3e8;--bad:#b3362f;--badbg:#fbe3e1;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121722;--card:#1b2230;--ink:#e8ecf4;--mute:#9aa7bd;--line:#2c3547;--acc:#8c98ff;--acc-ink:#101528;--ok:#6fd3a1;--okbg:#17382b;--bad:#ff918a;--badbg:#3d1f1d;color-scheme:dark}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:22px}
+h1{font-size:clamp(1.8rem,5vw,2.8rem);line-height:1.05;margin:0;font-weight:800;letter-spacing:-.02em}
+h2{margin:0 0 6px;font-size:1.25rem}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;font-weight:600}
+button:focus-visible,textarea:focus-visible,label:focus-within{outline:3px solid var(--acc);outline-offset:2px}
+button.p{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+button.d{color:var(--bad);border-color:var(--bad)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.card p{margin:0;color:var(--mute);font-size:.95rem;flex:1}
+.meta{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.78rem;padding:2px 9px;border-radius:99px;border:1.5px solid var(--line);color:var(--mute)}
+.tag.v{border-color:var(--acc);color:var(--acc)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .p{flex:1}
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:20px}
+textarea{width:100%;min-height:280px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--ink);border:1.5px solid var(--line);border-radius:10px;padding:12px;resize:vertical}
+.err{background:var(--badbg);color:var(--bad);padding:10px 12px;border-radius:10px;margin-top:10px;white-space:pre-wrap}
+.empty{text-align:center;padding:48px 16px;border:2px dashed var(--line);border-radius:16px;color:var(--mute)}
+.bar{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin:10px 0 18px}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer;background:var(--card)}
+.opt input{margin-top:4px;width:18px;height:18px;accent-color:var(--acc);flex:none}
+.opt.sel{border-color:var(--acc)}
+.opt.ok{border-color:var(--ok);background:var(--okbg)}
+.opt.bad{border-color:var(--bad);background:var(--badbg)}
+.fb{padding:12px 14px;border-radius:12px;background:var(--bg);border:1.5px solid var(--line);margin:14px 0}
+.score{font-size:3rem;font-weight:800;line-height:1}
+.hint{color:var(--mute);font-size:.9rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:9}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const KEY="quices:v1";
+let mem=[],quizzes=load(),view={n:"home"},play=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):[]}catch(e){return mem}}
+function save(){mem=quizzes;try{localStorage.setItem(KEY,JSON.stringify(quizzes))}catch(e){toast("No se pudo guardar en este navegador")}}
+function toast(t){const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2200)}
+const VIS={PUBLIC:"Público",PRIVATE:"Privado",ACCESS_ONLY_VIA_LINK:"Solo con enlace",INACTIVE:"Inactivo"};
+
+const EXAMPLE={title:"Capitales del mundo",description:"Prueba rápida de geografía.",visibility:"PUBLIC",attemptsLimit:3,questions:[
+{content:"¿Cuál es la capital de Costa Rica?",type:"UNIQUE",feedback:"San José es la capital desde 1823.",answers:[{content:"San José",isCorrect:true},{content:"Cartago",isCorrect:false},{content:"Heredia",isCorrect:false}]},
+{content:"Selecciona las capitales de Sudamérica.",type:"MULTIPLE",feedback:"Lima y Bogotá están en Sudamérica; Managua es de Centroamérica.",answers:[{content:"Lima",isCorrect:true},{content:"Bogotá",isCorrect:true},{content:"Managua",isCorrect:false}]}]};
+
+const AI_PROMPT=`Genera un quiz sobre [TEMA] con [N] preguntas. Responde SOLO con JSON válido (sin texto extra ni bloques de código) con esta estructura:
+{"title":"string","description":"string","visibility":"PUBLIC | PRIVATE | ACCESS_ONLY_VIA_LINK | INACTIVE","attemptsLimit":3,"questions":[{"content":"string","type":"UNIQUE | MULTIPLE","feedback":"string","answers":[{"content":"string","isCorrect":true}]}]}
+Reglas: UNIQUE = exactamente 1 respuesta correcta; MULTIPLE = 2 o más correctas; 3 a 5 respuestas por pregunta; feedback explica la respuesta correcta.`;
+
+function validate(q){
+  const e=[];
+  if(!q||typeof q!=="object")return["El JSON debe ser un objeto."];
+  if(!q.title||typeof q.title!=="string")e.push("Falta «title».");
+  if(!VIS[q.visibility])e.push("«visibility» debe ser PUBLIC, PRIVATE, ACCESS_ONLY_VIA_LINK o INACTIVE.");
+  if(!(Number.isInteger(q.attemptsLimit)&&q.attemptsLimit>=0))e.push("«attemptsLimit» debe ser un entero (0 = sin límite).");
+  if(!Array.isArray(q.questions)||!q.questions.length)e.push("«questions» debe tener al menos una pregunta.");
+  else q.questions.forEach((x,i)=>{
+    const p="Pregunta "+(i+1)+": ";
+    if(!x.content)e.push(p+"falta «content».");
+    if(x.type!=="UNIQUE"&&x.type!=="MULTIPLE")e.push(p+"«type» debe ser UNIQUE o MULTIPLE.");
+    if(!Array.isArray(x.answers)||x.answers.length<2){e.push(p+"necesita al menos 2 respuestas.");return}
+    if(x.answers.some(a=>!a.content||typeof a.isCorrect!=="boolean"))e.push(p+"cada respuesta necesita «content» e «isCorrect» booleano.");
+    const c=x.answers.filter(a=>a.isCorrect).length;
+    if(!c)e.push(p+"no tiene respuesta correcta.");
+    if(x.type==="UNIQUE"&&c>1)e.push(p+"es UNIQUE pero tiene "+c+" correctas.");
+  });
+  return e;
+}
+function parse(txt){
+  let t=txt.trim().replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+  t=t.replace(/[“”]/g,'"').replace(/,\s*([}\]])/g,"$1");
+  return JSON.parse(t);
+}
+
+function go(n,x){view={n,...x};if(n!=="play")play=null;render();window.scrollTo(0,0)}
+function render(){
+  const a=$("#app");
+  if(view.n==="home")a.innerHTML=home();
+  else if(view.n==="import")a.innerHTML=imp();
+  else if(view.n==="play")a.innerHTML=playView();
+  else if(view.n==="export")a.innerHTML=expView();
+}
+function home(){
+  const cards=quizzes.map(q=>{
+    const used=q.attempts.length,lim=q.attemptsLimit,best=q.attempts.length?Math.max(...q.attempts.map(t=>Math.round(t.score/t.total*100))):null;
+    const blocked=q.visibility==="INACTIVE"||(lim>0&&used>=lim);
+    return `<article class="card"><div class="meta"><span class="tag v">${VIS[q.visibility]}</span><span class="tag">${q.questions.length} preguntas</span><span class="tag">${lim?used+" de "+lim+" intentos":"intentos libres"}</span>${best!==null?`<span class="tag">Mejor: ${best}%</span>`:""}</div>
+    <h2>${esc(q.title)}</h2><p>${esc(q.description)||"Sin descripción."}</p>
+    <div class="row"><button class="p" ${blocked?"disabled":""} data-a="start" data-id="${q.id}">${blocked?(q.visibility==="INACTIVE"?"Inactivo":"Sin intentos"):"Empezar"}</button>
+    ${used&&lim?`<button data-a="reset" data-id="${q.id}" title="Reiniciar intentos">Reiniciar</button>`:""}
+    <button class="d" data-a="del" data-id="${q.id}">Eliminar</button></div></article>`}).join("");
+  return `<header><h1>Mis quices</h1><div class="row"><button data-a="exp" ${quizzes.length?"":"disabled"}>Exportar todo</button><button data-a="bak">Importar copia</button><button class="p" data-a="imp">Nuevo quiz</button></div><input type="file" id="file" accept=".json,application/json" hidden></header>`+
+  (quizzes.length?`<div class="grid">${cards}</div>`:`<div class="empty"><h2>Aún no tienes quices</h2><p>Pega un JSON (puedes pedirle a una IA que lo genere) y aparecerá aquí como card.</p><button class="p" data-a="imp">Crear el primero</button></div>`);
+}
+function imp(){
+  return `<header><h1>Nuevo quiz</h1><button data-a="home">Volver</button></header>
+  <div class="panel"><p class="hint" style="margin-top:0">Pega aquí el JSON del quiz. Acepta uno solo o una lista de quices.</p>
+  <textarea id="json" spellcheck="false" aria-label="JSON del quiz" placeholder='{"title": "...", "questions": [...]}'>${esc(view.txt||"")}</textarea>
+  <div id="err"></div>
+  <div class="row" style="margin-top:12px"><button class="p" data-a="save">Guardar quiz</button><button data-a="ex">Cargar ejemplo</button><button data-a="cp">Copiar prompt para IA</button></div></div>`;
+}
+function playView(){
+  const q=play.q,x=q.questions[play.i];
+  if(play.done){
+    const t=q.questions.length,s=play.res.filter(r=>r.ok).length,pc=Math.round(s/t*100);
+    return `<header><h1>Resultado</h1></header><div class="panel"><div class="score">${pc}%</div><p>Acertaste ${s} de ${t} preguntas.</p>
+    ${play.res.map((r,i)=>`<div class="fb"><b>${r.ok?"Correcta":"Incorrecta"} · ${esc(q.questions[i].content)}</b>${!r.ok&&q.questions[i].feedback?`<br><span class="hint">${esc(q.questions[i].feedback)}</span>`:""}</div>`).join("")}
+    <div class="row"><button class="p" data-a="home">Volver a mis quices</button></div></div>`;
+  }
+  const multi=x.type==="MULTIPLE",ck=play.ck;
+  const opts=x.answers.map((a,i)=>{
+    let c="opt";
+    if(ck){if(a.isCorrect)c+=" ok";else if(play.sel.has(i))c+=" bad"}else if(play.sel.has(i))c+=" sel";
+    return `<label class="${c}"><input type="${multi?"checkbox":"radio"}" name="o" data-i="${i}" ${play.sel.has(i)?"checked":""} ${ck?"disabled":""}><span>${esc(a.content)}</span></label>`}).join("");
+  const last=play.i===q.questions.length-1;
+  return `<header><div><div class="hint">${esc(q.title)} · pregunta ${play.i+1} de ${q.questions.length}</div></div><button data-a="exit">Salir</button></header>
+  <div class="bar"><i style="width:${(play.i+(ck?1:0))/q.questions.length*100}%"></i></div>
+  <div class="panel"><h2>${esc(x.content)}</h2><p class="hint">${multi?"Selecciona todas las correctas.":"Selecciona una respuesta."}</p>${opts}
+  ${ck?`<div class="fb"><b>${play.res[play.i].ok?"¡Correcto!":"No es correcto."}</b>${x.feedback?"<br>"+esc(x.feedback):""}</div>`:""}
+  <div class="row">${ck?`<button class="p" data-a="next">${last?"Ver resultado":"Siguiente"}</button>`:`<button class="p" data-a="check" ${play.sel.size?"":"disabled"}>Comprobar</button>`}</div></div>`;
+}
+function finish(){
+  const q=play.q,s=play.res.filter(r=>r.ok).length;
+  const z=quizzes.find(v=>v.id===q.id);
+  if(z){z.attempts.push({score:s,total:q.questions.length,date:Date.now()});save()}
+  play.done=true;
+}
+function expView(){return `<header><h1>Copia de seguridad</h1><button data-a="home">Volver</button></header><div class="panel"><p class="hint" style="margin-top:0">No se pudo guardar el archivo desde aquí. Copia este JSON y guárdalo en un archivo .json; luego restáuralo con «Importar copia» o pegándolo en «Nuevo quiz».</p><textarea readonly id="exp">${esc(view.txt)}</textarea><div class="row" style="margin-top:12px"><button class="p" data-a="cpx">Copiar JSON</button></div></div>`}
+function importText(t){
+  let d;try{d=parse(t)}catch(x){return{err:"JSON no válido: "+x.message}}
+  const list=Array.isArray(d)?d:[d],errs=[];
+  list.forEach((q,i)=>validate(q).forEach(m=>errs.push("Quiz "+(i+1)+" · "+m)));
+  if(errs.length)return{err:errs.join("\n")};
+  const sig=q=>q.title+"|"+JSON.stringify(q.questions),have=new Set(quizzes.map(sig));let n=0,skip=0;
+  list.forEach(q=>{if(have.has(sig(q))){skip++;return}have.add(sig(q));n++;
+    quizzes.push({...q,description:q.description||"",id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),attempts:Array.isArray(q.attempts)?q.attempts.filter(t=>t&&t.total>0):[]})});
+  save();return{msg:n+" quices importados"+(skip?" ("+skip+" repetidos omitidos)":"")};
+}
+async function exportAll(){
+  const data=JSON.stringify(quizzes.map(({id,...q})=>q),null,2),filename="quices-"+new Date().toISOString().slice(0,10)+".json";
+  try{const dl=await claude.use("downloads");if(!dl)throw 0;await dl.save({filename,data});toast("Copia exportada")}
+  catch(e){if(e&&e.code==="declined")return;go("export",{txt:data})}
+}
+document.addEventListener("change",e=>{
+  if(e.target.id!=="file")return;const f=e.target.files[0];if(!f)return;
+  f.text().then(t=>{const r=importText(t);toast(r.err?r.err.split("\n")[0]:r.msg);render()},()=>toast("No se pudo leer el archivo"));
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-a]");if(!b)return;
+  const a=b.dataset.a,id=b.dataset.id;
+  if(a==="home")go("home");
+  else if(a==="exp")exportAll();
+  else if(a==="bak")$("#file").click();
+  else if(a==="cpx"){try{navigator.clipboard.writeText(view.txt).then(()=>toast("JSON copiado"),()=>{$("#exp").select();toast("Cópialo manualmente")})}catch(x){$("#exp").select();toast("Cópialo manualmente")}}
+  else if(a==="imp")go("import");
+  else if(a==="ex")$("#json").value=JSON.stringify(EXAMPLE,null,2);
+  else if(a==="cp"){(navigator.clipboard?navigator.clipboard.writeText(AI_PROMPT):Promise.reject()).then(()=>toast("Prompt copiado"),()=>{$("#json").value=AI_PROMPT;toast("Prompt puesto en el cuadro; cópialo desde ahí")})}
+  else if(a==="save"){
+    const t=$("#json").value,box=$("#err");
+    try{
+      const d=parse(t),list=Array.isArray(d)?d:[d],errs=[];
+      list.forEach((q,i)=>validate(q).forEach(m=>errs.push((list.length>1?"Quiz "+(i+1)+" · ":"")+m)));
+      if(errs.length){box.innerHTML='<div class="err">'+esc(errs.join("\n"))+"</div>";return}
+      list.forEach(q=>quizzes.unshift({...q,description:q.description||"",id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),attempts:[]}));
+      save();toast(list.length>1?list.length+" quices guardados":"Quiz guardado");go("home");
+    }catch(x){box.innerHTML='<div class="err">'+esc("JSON no válido: "+x.message)+"</div>"}
+  }
+  else if(a==="del"){const q=quizzes.find(v=>v.id===id);if(confirm("¿Eliminar «"+q.title+"»? Esta acción no se puede deshacer.")){quizzes=quizzes.filter(v=>v.id!==id);save();render();toast("Quiz eliminado")}}
+  else if(a==="reset"){const q=quizzes.find(v=>v.id===id);q.attempts=[];save();render();toast("Intentos reiniciados")}
+  else if(a==="start"){const q=quizzes.find(v=>v.id===id);play={q,i:0,sel:new Set(),ck:false,res:[],done:false};view={n:"play"};render();window.scrollTo(0,0)}
+  else if(a==="exit"){if(confirm("¿Salir? Este intento no se contará."))go("home")}
+  else if(a==="check"){
+    const x=play.q.questions[play.i],ok=x.answers.every((an,i)=>an.isCorrect===play.sel.has(i));
+    play.res[play.i]={ok};play.ck=true;render();
+  }
+  else if(a==="next"){
+    if(play.i===play.q.questions.length-1)finish();
+    else{play.i++;play.sel=new Set();play.ck=false}
+    render();window.scrollTo(0,0);
+  }
+});
+document.addEventListener("change",e=>{
+  const i=e.target.dataset&&e.target.dataset.i;if(i===undefined||!play||play.ck)return;
+  const n=+i,x=play.q.questions[play.i];
+  if(x.type==="MULTIPLE"){play.sel.has(n)?play.sel.delete(n):play.sel.add(n)}else play.sel=new Set([n]);
+  render();
+});
+render();
+</script>
+</body>
+</html>
