@@ -154,6 +154,7 @@ function importText(t){
     quizzes.push({...q,description:q.description||"",id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),attempts:Array.isArray(q.attempts)?q.attempts.filter(t=>t&&t.total>0):[]})});
   save();return{msg:n+" quices importados"+(skip?" ("+skip+" repetidos omitidos)":"")};
 }
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 async function exportAll(){
   const data=JSON.stringify(quizzes.map(({id,...q})=>q),null,2),filename="quices-"+new Date().toISOString().slice(0,10)+".json";
   try{const dl=await claude.use("downloads");if(!dl)throw 0;await dl.save({filename,data});toast("Copia exportada")}
@@ -185,7 +186,7 @@ document.addEventListener("click",e=>{
   }
   else if(a==="del"){const q=quizzes.find(v=>v.id===id);if(confirm("¿Eliminar «"+q.title+"»? Esta acción no se puede deshacer.")){quizzes=quizzes.filter(v=>v.id!==id);save();render();toast("Quiz eliminado")}}
   else if(a==="reset"){const q=quizzes.find(v=>v.id===id);q.attempts=[];save();render();toast("Intentos reiniciados")}
-  else if(a==="start"){const q=quizzes.find(v=>v.id===id);play={q,i:0,sel:new Set(),ck:false,res:[],done:false};view={n:"play"};render();window.scrollTo(0,0)}
+  else if(a==="start"){const q=quizzes.find(v=>v.id===id);play={q:{...q,questions:shuffle(q.questions).map(x=>({...x,answers:shuffle(x.answers)}))},i:0,sel:new Set(),ck:false,res:[],done:false};view={n:"play"};render();window.scrollTo(0,0)}
   else if(a==="exit"){if(confirm("¿Salir? Este intento no se contará."))go("home")}
   else if(a==="check"){
     const x=play.q.questions[play.i],ok=x.answers.every((an,i)=>an.isCorrect===play.sel.has(i));
