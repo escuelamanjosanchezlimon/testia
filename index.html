@@ -123,7 +123,7 @@ function parse(txt){
   return JSON.parse(t);
 }
 
-const BASE="https://claude.ai/artifact/2TFTmA14h7aXzVCKYa1kMh";
+const BASE="https://github.com/escuelamanjosanchezlimon";
 function hue(c){if(!c)return 150;let h=0;for(const ch of c)h=(h*31+ch.charCodeAt(0))%360;return h}
 function setHash(h){try{if(h)location.hash=h;else if(location.hash)history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
 function go(n,x){view={n,...x};if(n!=="play")play=null;render();window.scrollTo(0,0);if(n!=="play")setHash(n==="quiz"?"quiz-"+x.id:"")}
